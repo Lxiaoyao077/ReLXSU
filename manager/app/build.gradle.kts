@@ -168,7 +168,7 @@ baselineProfile {
 
 base {
     archivesName.set(
-        "ReSukiSU_${managerVersionName}_${managerVersionCode}"
+        "ReLxSu_${managerVersionName}_${managerVersionCode}"
     )
 }
 
