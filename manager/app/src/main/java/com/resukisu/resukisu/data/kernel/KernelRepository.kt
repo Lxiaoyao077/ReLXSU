@@ -73,6 +73,8 @@ class KernelRepository(
             defaultUmountModules = runCatching { Natives.isDefaultUmountModules() }.getOrDefault(
                 false
             ),
+            hideBootloaderEnabled = runCatching { ksuCliRepository.isHideBootloaderEnabled() }
+                .getOrDefault(false),
         )
     }
 
@@ -96,6 +98,9 @@ class KernelRepository(
 
     suspend fun setDefaultUmountModules(enabled: Boolean): Boolean =
         withContext(Dispatchers.IO) { Natives.setDefaultUmountModules(enabled) }
+
+    suspend fun setHideBootloaderEnabled(enabled: Boolean): Boolean =
+        withContext(Dispatchers.IO) { ksuCliRepository.setHideBootloaderEnabled(enabled) }
 
     fun isLateLoadMode(): Boolean = runCatching { Natives.isLateLoadMode }.getOrDefault(false)
 

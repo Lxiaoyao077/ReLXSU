@@ -31,7 +31,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.twotone.Android
 import androidx.compose.material.icons.twotone.Animation
 import androidx.compose.material.icons.twotone.BlurOn
 import androidx.compose.material.icons.twotone.Brush
@@ -394,9 +393,7 @@ fun ThemeSettingsScreen(
                     homeUiState = homeUiState,
                     homeViewModel = homeViewModel,
                     moduleUiState = moduleUiState,
-                    moduleViewModel = moduleViewModel,
-                    settingsUiState = settingsState,
-                    settingsViewModel = settingsViewModel
+                    moduleViewModel = moduleViewModel
                 )
             }
 
@@ -635,25 +632,10 @@ private fun AppearanceSettings(
 private fun CustomizationSettings(
     homeUiState: HomeUiState,
     moduleUiState: ModuleUiState,
-    settingsUiState: SettingsUiState,
-    settingsViewModel: SettingsViewModel,
     homeViewModel: HomeViewModel,
     moduleViewModel: ModuleViewModel,
 ) {
     SegmentedColumn(title = stringResource(R.string.custom_settings)) {
-        item {
-            // 图标切换
-            SettingsSwitchWidget(
-                icon = Icons.TwoTone.Android,
-                title = stringResource(R.string.icon_switch_title),
-                description = stringResource(R.string.icon_switch_summary),
-                checked = settingsUiState.useAltIcon,
-                onCheckedChange = { enabled ->
-                    settingsViewModel.dispatch(SettingsUiAction.SetAlternateIcon(enabled))
-                }
-            )
-        }
-
         item {
             // 显示更多模块信息
             SettingsSwitchWidget(

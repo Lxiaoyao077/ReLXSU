@@ -8,7 +8,7 @@ use rustix::process::chdir;
 
 use crate::{
     android::{
-        dynamic_manager, ksucalls,
+        dynamic_manager, hide_bootloader, ksucalls,
         module::{self, handle_updated_modules, metamodule, prune_modules},
         restorecon,
         utils::{self, is_safe_mode, switch_mnt_ns},
@@ -192,6 +192,7 @@ pub fn on_boot_completed() {
     // Load susfs boot-completed
     if !is_safe_mode() {
         crate::android::susfs::init_event::on_boot_completed();
+        hide_bootloader::hide_bootloader_status();
     }
 }
 

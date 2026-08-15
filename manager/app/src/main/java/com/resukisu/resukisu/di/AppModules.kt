@@ -123,6 +123,7 @@ import com.resukisu.resukisu.domain.usecase.SetAppProfileUseCase
 import com.resukisu.resukisu.domain.usecase.SetAppSepolicyUseCase
 import com.resukisu.resukisu.domain.usecase.SetBooleanPreferenceUseCase
 import com.resukisu.resukisu.domain.usecase.SetDefaultUmountModulesUseCase
+import com.resukisu.resukisu.domain.usecase.SetHideBootloaderEnabledUseCase
 import com.resukisu.resukisu.domain.usecase.SetKernelUmountEnabledUseCase
 import com.resukisu.resukisu.domain.usecase.SetManualDynamicManagerUseCase
 import com.resukisu.resukisu.domain.usecase.SetModuleEnabledUseCase
@@ -318,6 +319,7 @@ val useCaseModule = module {
     factoryOf(::SetKernelUmountEnabledUseCase)
     factoryOf(::ConfigureSuLogUseCase)
     factoryOf(::SetSelinuxHideEnabledUseCase)
+    factoryOf(::SetHideBootloaderEnabledUseCase)
     factoryOf(::SetDefaultUmountModulesUseCase)
     factoryOf(::IsLateLoadModeUseCase)
     factoryOf(::GetAppProfileUseCase)

@@ -341,6 +341,22 @@ fun SettingsPage(bottomPadding: Dp) {
                             }
 
                             item {
+                                SettingsSwitchWidget(
+                                    icon = Icons.TwoTone.Security,
+                                    title = stringResource(id = R.string.settings_hide_bootloader),
+                                    description = stringResource(id = R.string.settings_hide_bootloader_summary),
+                                    checked = uiState.hideBootloaderEnabled,
+                                    onCheckedChange = { enabled ->
+                                        settingsViewModel.dispatch(
+                                            SettingsUiAction.SetHideBootloader(
+                                                enabled
+                                            )
+                                        )
+                                    },
+                                )
+                            }
+
+                            item {
                                 // 卸载模块开关
                                 SettingsSwitchWidget(
                                     icon = Icons.TwoTone.FolderDelete,

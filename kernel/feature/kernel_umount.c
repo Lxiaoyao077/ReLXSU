@@ -29,7 +29,7 @@
 #include "ksu.h"
 #include "feature/sucompat.h"
 
-static bool ksu_kernel_umount_enabled = true;
+static bool ksu_kernel_umount_enabled = false;
 
 static int kernel_umount_feature_get(u64 *value)
 {

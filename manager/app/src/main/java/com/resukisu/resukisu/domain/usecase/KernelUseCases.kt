@@ -34,6 +34,10 @@ class SetDefaultUmountModulesUseCase(private val repository: KernelRepository) {
     suspend operator fun invoke(enabled: Boolean) = repository.setDefaultUmountModules(enabled)
 }
 
+class SetHideBootloaderEnabledUseCase(private val repository: KernelRepository) {
+    suspend operator fun invoke(enabled: Boolean) = repository.setHideBootloaderEnabled(enabled)
+}
+
 class IsLateLoadModeUseCase(private val repository: KernelRepository) {
     operator fun invoke() = repository.isLateLoadMode()
 }

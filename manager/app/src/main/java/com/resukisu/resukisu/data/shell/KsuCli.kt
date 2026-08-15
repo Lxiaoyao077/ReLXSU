@@ -28,6 +28,7 @@ import java.util.Properties
 class KsuCliRepository(context: Context) {
     private companion object {
         const val TAG = "KsuCli"
+        const val HIDE_BOOTLOADER_CONFIG = "/data/adb/ksu/.hide_bootloader"
     }
 
     private val nativeLibraryDir = context.applicationInfo.nativeLibraryDir
@@ -182,6 +183,21 @@ class KsuCliRepository(context: Context) {
         val valueLine =
             out.firstOrNull { it.trim().startsWith("Value:") } ?: return@withContext null
         valueLine.substringAfter("Value:").trim().toLongOrNull()
+    }
+
+    fun isHideBootloaderEnabled(): Boolean {
+        val shell = getRootShell()
+        return shell.newJob().add("test -f $HIDE_BOOTLOADER_CONFIG").exec().isSuccess
+    }
+
+    fun setHideBootloaderEnabled(enabled: Boolean): Boolean {
+        val shell = getRootShell()
+        val cmd = if (enabled) {
+            "touch $HIDE_BOOTLOADER_CONFIG"
+        } else {
+            "rm -f $HIDE_BOOTLOADER_CONFIG"
+        }
+        return ShellUtils.fastCmdResult(shell, cmd)
     }
 
     fun install() {

@@ -14,6 +14,7 @@ import com.resukisu.resukisu.domain.usecase.GetKernelFeatureSettingsUseCase
 import com.resukisu.resukisu.domain.usecase.GetPlatformFeatureStatusUseCase
 import com.resukisu.resukisu.domain.usecase.LoadSettingsPlatformUseCase
 import com.resukisu.resukisu.domain.usecase.SetDefaultUmountModulesUseCase
+import com.resukisu.resukisu.domain.usecase.SetHideBootloaderEnabledUseCase
 import com.resukisu.resukisu.domain.usecase.SetKernelUmountEnabledUseCase
 import com.resukisu.resukisu.domain.usecase.SetSelinuxHideEnabledUseCase
 import com.resukisu.resukisu.domain.usecase.SetSuEnabledUseCase
@@ -73,7 +74,6 @@ data class SettingsUiState(
     val showLanguageDialog: Boolean = false,
     val currentAppLocale: Locale? = null,
     val showThemeColorDialog: Boolean = false,
-    val useAltIcon: Boolean = false,
     val cardAlpha: Float = 1f,
     val backgroundDim: Float = 0f,
     val isCustomBackgroundEnabled: Boolean = false,
@@ -96,6 +96,7 @@ data class SettingsUiState(
     val isSuLogEnabled: Boolean = false,
     val selinuxHideStatus: String = "",
     val isSelinuxHideEnabled: Boolean = false,
+    val hideBootloaderEnabled: Boolean = false,
     val defaultUmountModules: Boolean = false,
 )
 
@@ -124,7 +125,6 @@ sealed interface SettingsUiAction {
     data object RestartActivity : SettingsUiAction
     data object ApplyDpi : SettingsUiAction
     data class SetTempDpi(val dpi: Int) : SettingsUiAction
-    data class SetAlternateIcon(val enabled: Boolean) : SettingsUiAction
     data class SetManagerUpdateCheck(val enabled: Boolean) : SettingsUiAction
     data class SetBetaUpdateCheck(val enabled: Boolean) : SettingsUiAction
     data class SetModuleUpdateCheck(val enabled: Boolean) : SettingsUiAction
@@ -132,6 +132,7 @@ sealed interface SettingsUiAction {
     data class SetKernelUmount(val enabled: Boolean) : SettingsUiAction
     data class SetAutoJailbreak(val enabled: Boolean) : SettingsUiAction
     data class SetSelinuxHide(val enabled: Boolean) : SettingsUiAction
+    data class SetHideBootloader(val enabled: Boolean) : SettingsUiAction
     data class SetAdbRoot(val enabled: Boolean) : SettingsUiAction
     data class SetSuLog(val enabled: Boolean) : SettingsUiAction
     data class SetDefaultUmountModules(val enabled: Boolean) : SettingsUiAction
@@ -153,6 +154,7 @@ class SettingsViewModel(
     private val setKernelUmountEnabled: SetKernelUmountEnabledUseCase,
     private val setSuLogEnabled: ConfigureSuLogUseCase,
     private val setSelinuxHideEnabled: SetSelinuxHideEnabledUseCase,
+    private val setHideBootloaderEnabled: SetHideBootloaderEnabledUseCase,
     private val setDefaultUmountModules: SetDefaultUmountModulesUseCase,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(SettingsUiState())
@@ -193,6 +195,7 @@ class SettingsViewModel(
                     isSuLogEnabled = features.suLogEnabled,
                     selinuxHideStatus = platform.selinuxHideStatus,
                     isSelinuxHideEnabled = features.selinuxHideEnabled,
+                    hideBootloaderEnabled = features.hideBootloaderEnabled,
                     defaultUmountModules = features.defaultUmountModules,
                 )
             }
@@ -304,18 +307,6 @@ class SettingsViewModel(
 
     fun saveCardConfig() = updateAppearanceAsync(AppearanceSetting.SaveCardConfig)
 
-    fun handleIconChange(enabled: Boolean) {
-        mutableState.update { it.copy(useAltIcon = enabled) }
-        viewModelScope.launch {
-            updatePlatform(PlatformSetting.AlternateIcon(enabled))
-                .onSuccess {
-                    applySnapshot(it, resetTempDpi = false)
-                    mutableEvents.tryEmit(SettingsUiEvent.Message(R.string.icon_switched))
-                }
-                .onFailure(::emitError)
-        }
-    }
-
     fun handleCheckManagerUpdateChange(enabled: Boolean) {
         mutableState.update {
             it.copy(
@@ -392,6 +383,14 @@ class SettingsViewModel(
         }
     }
 
+    fun handleHideBootloaderChange(checked: Boolean) {
+        viewModelScope.launch {
+            if (setHideBootloaderEnabled(checked)) {
+                mutableState.update { it.copy(hideBootloaderEnabled = checked) }
+            }
+        }
+    }
+
     fun handleDefaultUmountModulesChange(checked: Boolean) {
         viewModelScope.launch {
             if (setDefaultUmountModules(checked)) {
@@ -429,7 +428,6 @@ class SettingsViewModel(
             SettingsUiAction.RestartActivity -> restartActivityForLanguage()
             SettingsUiAction.ApplyDpi -> handleDpiApply()
             is SettingsUiAction.SetTempDpi -> updateTempDpi(action.dpi)
-            is SettingsUiAction.SetAlternateIcon -> handleIconChange(action.enabled)
             is SettingsUiAction.SetManagerUpdateCheck -> handleCheckManagerUpdateChange(action.enabled)
             is SettingsUiAction.SetBetaUpdateCheck -> handleCheckBetaUpdateChange(action.enabled)
             is SettingsUiAction.SetModuleUpdateCheck -> handleCheckModuleUpdateChange(action.enabled)
@@ -437,6 +435,7 @@ class SettingsViewModel(
             is SettingsUiAction.SetKernelUmount -> handleKernelUmountChange(action.enabled)
             is SettingsUiAction.SetAutoJailbreak -> handleAutoJailbreakChange(action.enabled)
             is SettingsUiAction.SetSelinuxHide -> handleSelinuxHideChange(action.enabled)
+            is SettingsUiAction.SetHideBootloader -> handleHideBootloaderChange(action.enabled)
             is SettingsUiAction.SetAdbRoot -> handleAdbRootChange(action.enabled)
             is SettingsUiAction.SetSuLog -> handleSuLogChange(action.enabled)
             is SettingsUiAction.SetDefaultUmountModules ->
@@ -474,7 +473,6 @@ class SettingsViewModel(
                 dynamicColorSpec = snapshot.dynamicColorSpec,
                 dynamicPaletteStyle = snapshot.dynamicPaletteStyle,
                 currentAppLocale = snapshot.currentLocaleTag?.let(Locale::forLanguageTag),
-                useAltIcon = snapshot.useAltIcon,
                 cardAlpha = snapshot.cardAlpha,
                 backgroundDim = snapshot.backgroundDim,
                 isCustomBackgroundEnabled = snapshot.customBackgroundEnabled,
