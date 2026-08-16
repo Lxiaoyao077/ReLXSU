@@ -1,8 +1,9 @@
 import asyncio
-import os,re
+import json
+import os
 import random
-import sys,json
-from telegram import Bot,InputMediaDocument
+import sys
+from telegram import Bot, InputMediaDocument
 from telegram.error import RetryAfter
 from telegram.constants import ParseMode
 
@@ -15,7 +16,8 @@ TITLE = os.environ.get("TITLE")
 VERSION = os.environ.get("VERSION")
 BRANCH = os.environ.get("BRANCH")
 
-GITHUB_EVENT = json.loads(open(os.environ.get("GITHUB_EVENT_PATH"), "r").read())
+with open(os.environ.get("GITHUB_EVENT_PATH"), "r", encoding="utf-8") as f:
+    GITHUB_EVENT = json.loads(f.read())
 GITHUB_REF_TYPE = os.environ.get("GITHUB_REF_TYPE")
 
 commit_message = ''
@@ -23,7 +25,6 @@ commit_line = ''
 try:
     if 'commits' in GITHUB_EVENT:
         commits = GITHUB_EVENT['commits']
-        commit_message = ''
         i = len(commits)
         for commit in commits[::-1]:
             msg_line = commit['message'].split('\n')
@@ -89,7 +90,13 @@ main 分支已更新，此 topic 的管理器可能已过时
 """.strip()
 
 def escape_telegram_html(text: str) -> str:
-    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&#39;")
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#39;")
+    )
 
 def get_caption():
     msg = MSG_TEMPLATE.format(
@@ -124,7 +131,7 @@ def check_environ():
     else:
         try:
             CHAT_ID = int(CHAT_ID)
-        except:
+        except (TypeError, ValueError):
             pass
     if RUN_URL is None:
         print("[-] Invalid RUN_URL")
@@ -141,7 +148,7 @@ def check_environ():
     if MESSAGE_THREAD_ID and MESSAGE_THREAD_ID != "":
         try:
             MESSAGE_THREAD_ID = int(MESSAGE_THREAD_ID)
-        except:
+        except (TypeError, ValueError):
             print("[-] Invalid MESSAGE_THREAD_ID")
             exit(1)
     else:
@@ -149,7 +156,7 @@ def check_environ():
     if DEVELOPING_THREAD_ID and DEVELOPING_THREAD_ID != "":
         try:
             DEVELOPING_THREAD_ID = int(DEVELOPING_THREAD_ID)
-        except:
+        except (TypeError, ValueError):
             print("[-] Invalid DEVELOPING_THREAD_ID")
             exit(1)
     else:

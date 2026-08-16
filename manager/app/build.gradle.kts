@@ -168,7 +168,7 @@ baselineProfile {
 
 base {
     archivesName.set(
-        "ReLxSu_${managerVersionName}_${managerVersionCode}"
+        "ReLXSU_${managerVersionName}_${managerVersionCode}"
     )
 }
 
@@ -222,9 +222,7 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.miuix.blur)
     implementation(libs.miuix.navigation)
-    implementation(libs.androidx.navigationevent) {
-        exclude(group = "androidx.navigation", module = "navigationevent-compose")
-    }
+    implementation(libs.androidx.navigationevent)
 
     implementation(libs.aboutlibraries.core)
     implementation(libs.aboutlibraries.compose.m3)
@@ -252,8 +250,6 @@ dependencies {
     implementation(libs.androidx.webkit)
 
     implementation(libs.lsposed.cxx)
-
-    implementation(libs.com.github.topjohnwu.libsu.core)
 
     implementation(libs.accompanist.drawablepainter)
 }

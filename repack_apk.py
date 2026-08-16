@@ -54,8 +54,6 @@ def merge_config(file_cfg: dict, args: argparse.Namespace) -> dict:
         cfg["app_build_type"] = args.app_build_type
     if args.ksud_build_type:
         cfg["ksud_build_type"] = args.ksud_build_type
-    if args.arch:
-        cfg["arch"] = normalize_arch_values(args.arch)
     if args.output_name:
         cfg["output_name"] = args.output_name
     if args.strip is not None:
@@ -273,10 +271,7 @@ def repack_apk(
                 new_info.comment = info.comment
                 new_info.create_system = info.create_system
                 new_info.extra = info.extra
-                if info.compress_type == ZIP_DEFLATED:
-                    zout.writestr(new_info, data, compress_type=ZIP_DEFLATED)
-                else:
-                    zout.writestr(new_info, data)
+                zout.writestr(new_info, data)
 
             for arch in arch_filters:
                 ksud_bytes = ksud_bytes_by_arch.get(arch)

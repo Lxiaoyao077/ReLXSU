@@ -40,9 +40,6 @@ def find_all_apks(app_build_type: str) -> List[Path]:
 
 def process_single_apk(apk_path: Path, args: argparse.Namespace, out_dir: Path) -> Path:
     """Process a single APK, auto-detect architecture from filename"""
-    import tempfile
-    from zipfile import ZipFile, ZIP_DEFLATED, ZipInfo
-    
     # Detect architecture from filename
     detected_arch = detect_arch_from_filename(apk_path)
     
@@ -163,34 +160,16 @@ def load_config_and_merge(args: argparse.Namespace) -> None:
     """Load config file and merge into args"""
     ws_root = repack.workspace_root()
     config_path = Path(args.config) if args.config else ws_root / "repack-config.json"
-    
-    if config_path.exists():
-        file_cfg = repack.load_jsonc(config_path)
-        # Save signing info
-        signing = file_cfg.get("signing", {})
-        args._signing_from_config = signing
-        
-        # Merge other configs (if not specified via CLI)
-        if not args.app_build_type:
-            args.app_build_type = file_cfg.get("app_build_type", "debug")
-        if not args.ksud_build_type:
-            args.ksud_build_type = file_cfg.get("ksud_build_type", "debug")
-        if not args.arch:
-            args.arch = file_cfg.get("arch", [])
-        if args.strip is None:
-            args.strip = file_cfg.get("strip", False)
-        if not args.output_name:
-            args.output_name = file_cfg.get("output_name", "")
-        if not args.keystore_path:
-            args.keystore_path = signing.get("keystore_path", "")
-        if not args.key_alias:
-            args.key_alias = signing.get("key_alias", "")
-        if not args.keystore_pass:
-            args.keystore_pass = signing.get("keystore_pass", "")
-        if not args.key_pass:
-            args.key_pass = signing.get("key_pass", "")
-    else:
-        args._signing_from_config = {}
+    file_cfg = repack.load_jsonc(config_path) if config_path.exists() else {}
+    cfg = repack.merge_config(file_cfg, args)
+    args.app_build_type = cfg["app_build_type"]
+    args.ksud_build_type = cfg["ksud_build_type"]
+    args.arch = cfg["arch"]
+    args.strip = cfg["strip"]
+    args.output_name = cfg["output_name"]
+    args._signing_from_config = cfg["signing"]
+    for key in ("keystore_path", "key_alias", "keystore_pass", "key_pass"):
+        setattr(args, key, cfg["signing"].get(key, ""))
 
 
 def main():

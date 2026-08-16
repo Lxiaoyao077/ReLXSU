@@ -45,8 +45,10 @@ setup_kernelsu() {
 		echo "[+] Repository cloned."
 	fi
 	cd "$GKI_ROOT/KernelSU"
-	git stash && echo "[-] Stashed current changes."
-	if [ "$(git status | grep -Po 'v\d+(\.\d+)*' | head -n1)" ]; then
+	if [ -n "$(git status --porcelain)" ]; then
+		git stash && echo "[-] Stashed current changes."
+	fi
+	if [ "$(git status | grep -Eo 'v[0-9]+(\.[0-9]+)*' | head -n1)" ]; then
 		git checkout main && echo "[-] Switched to main branch."
 	fi
 	git pull && echo "[+] Repository updated."

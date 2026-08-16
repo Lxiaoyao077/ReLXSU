@@ -108,11 +108,14 @@ jobs:
         include:
           - manager_type: "spoofed"
             build_type: "release"
+            title: "Spoofed-Manager"
 
           - manager_type: "normal"
             build_type: "release"
+            title: "Manager"
           - manager_type: "normal"
             build_type: "debug"
+            title: "Manager"
     defaults:
       run:
         working-directory: ./manager
@@ -132,15 +135,6 @@ jobs:
             echo "COMMIT_SHA=${{ github.sha }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Determine manager variant
-        id: determine
-        run: |
-          if [ "${{ matrix.manager_type }}" == "spoofed" ]; then
-            echo "title=Spoofed-Manager" >> $GITHUB_OUTPUT
-          else
-            echo "title=Manager" >> $GITHUB_OUTPUT
-          fi
-
       - name: Run randomizer
         if: ${{ matrix.manager_type == 'spoofed' }}
         run: |
@@ -148,9 +142,9 @@ jobs:
           ./randomizer
 
       - name: Write key
-        if: ${{ github.event_name == 'workflow_dispatch' || ( github.event_name != 'pull_request') || github.ref_type == 'tag' }}
+        if: github.event_name != 'pull_request'
         run: |
-          if [ ! -z "${{ secrets.KEYSTORE }}" ]; then
+          if [ -n "${{ secrets.KEYSTORE }}" ]; then
             {
               echo KEYSTORE_PASSWORD='${{ secrets.KEYSTORE_PASSWORD }}'
               echo KEY_ALIAS='${{ secrets.KEY_ALIAS }}'
@@ -198,7 +192,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.determine.outputs.title }}-gradle-${{ matrix.build_type }}
+          name: ${{ matrix.title }}-gradle-${{ matrix.build_type }}
           path: |
             manager/app/build/outputs/apk/release/*.apk
             manager/app/build/outputs/apk/debug/*.apk
@@ -206,7 +200,7 @@ jobs:
       - name: Upload mappings
         uses: actions/upload-artifact@v7
         with:
-          name: "${{ steps.determine.outputs.title }}-mappings"
+          name: "${{ matrix.title }}-mappings"
           path: "manager/app/build/outputs/mapping/release/"
           if-no-files-found: ignore
 
@@ -220,30 +214,24 @@ jobs:
         include:
           - manager_type: "spoofed"
             build_type: "release"
+            title: "Spoofed-Manager"
           - manager_type: "normal"
             build_type: "release"
+            title: "Manager"
           - manager_type: "normal"
             build_type: "debug"
+            title: "Manager"
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Determine manager variant
-        id: determine
-        run: |
-          if [ "${{ matrix.manager_type }}" == "spoofed" ]; then
-            echo "title=Spoofed-Manager" >> $GITHUB_OUTPUT
-          else
-            echo "title=Manager" >> $GITHUB_OUTPUT
-          fi
-
       - name: Download artifact
         uses: actions/download-artifact@v8
         with:
-            name: ${{ steps.determine.outputs.title }}-gradle-${{ matrix.build_type }}
-            path: artifacts/${{ steps.determine.outputs.title }}-gradle-${{ matrix.build_type }}
+          name: ${{ matrix.title }}-gradle-${{ matrix.build_type }}
+          path: artifacts/${{ matrix.title }}-gradle-${{ matrix.build_type }}
       
       - name: Download arm64 ksud
         uses: actions/download-artifact@v8
@@ -266,7 +254,7 @@ jobs:
       - name: Place manager apk and ksud artifacts
         run: |
           mkdir -p manager/app/build/outputs/apk/${{ matrix.build_type }}
-          APKS=$(find artifacts/${{ steps.determine.outputs.title }}-gradle-${{ matrix.build_type }} -type f -name "*.apk")
+          APKS=$(find artifacts/${{ matrix.title }}-gradle-${{ matrix.build_type }} -type f -name "*.apk")
           APKS=$(echo "$APKS" | tr '\n' ' ')
           test -n "$APKS"
           cp -f $APKS manager/app/build/outputs/apk/${{ matrix.build_type }}/
@@ -326,12 +314,12 @@ jobs:
       - name: Delete gradle build
         uses: GeekyEggo/delete-artifact@v6
         with:
-          name: ${{ steps.determine.outputs.title }}-gradle-${{ matrix.build_type }}
+          name: ${{ matrix.title }}-gradle-${{ matrix.build_type }}
         
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.determine.outputs.title }}-${{ matrix.build_type }}
+          name: ${{ matrix.title }}-${{ matrix.build_type }}
           path: dist/*.apk
 
   upload-telegram:
@@ -340,7 +328,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        manager_type: [ "spoofed", "normal" ]
+        include:
+          - manager_type: "spoofed"
+            title: "Spoofed-Manager"
+          - manager_type: "normal"
+            title: "Manager"
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -349,20 +341,18 @@ jobs:
       - name: Setup need_upload
         id: need_upload
         run: |
-          if [ ! -z "${{ secrets.BOT_TOKEN }}" ]; then
+          if [ -n "${{ secrets.BOT_TOKEN }}" ]; then
             echo "UPLOAD=true" >> $GITHUB_OUTPUT
           else
             echo "UPLOAD=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Determine manager variant
+      - name: Determine thread
         id: determine
         run: |
           if [ "${{ matrix.manager_type }}" == "spoofed" ]; then
-            echo "title=Spoofed-Manager" >> $GITHUB_OUTPUT
             echo "topicid=${{ vars.MESSAGE_SPOOFED_THREAD_ID }}" >> $GITHUB_OUTPUT
           else
-            echo "title=Manager" >> $GITHUB_OUTPUT
             echo "topicid=${{ vars.MESSAGE_THREAD_ID }}" >> $GITHUB_OUTPUT
           fi
 
@@ -373,7 +363,7 @@ jobs:
       - name: Download Release artifact
         uses: actions/download-artifact@v8
         with:
-          name: ${{ steps.determine.outputs.title }}-release
+          name: ${{ matrix.title }}-release
           path: ./apk/release
 
       - name: Upload to Telegram
@@ -384,7 +374,7 @@ jobs:
           MESSAGE_THREAD_ID: ${{ steps.determine.outputs.topicid }}
           DEVELOPING_THREAD_ID: ${{ vars.MESSAGE_DEVELOPING_MANAGER_THREAD_ID }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          TITLE: ${{ steps.determine.outputs.title }}
+          TITLE: ${{ matrix.title }}
           BRANCH: ${{ github.ref_name }}
         run: |
           pip3 install python-telegram-bot

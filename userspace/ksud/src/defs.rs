@@ -56,6 +56,7 @@ mod android {
     pub const BACKUP_FILENAME: &str = "stock_image.sha1";
     pub const UMOUNT_CONFIG_PATH: &str = concatcp!(WORKING_DIR, ".umount");
 
+    pub const MANAGER_PACKAGE_NAME: &str = "com.resukisu.resukisu";
     pub const DYNAMIC_MANAGER: &str = concatcp!(WORKING_DIR, ".dynamic_manager");
     pub const SUSFS_CONFIG: &str = concatcp!(WORKING_DIR, ".susfs.json");
 
