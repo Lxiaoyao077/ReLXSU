@@ -713,9 +713,11 @@ static int manage_try_umount(void __user *arg)
     }
 
     case KSU_UMOUNT_ADD: {
-        long len = strncpy_from_user(buf, (const char __user *)cmd.arg, 256);
+        long len = strncpy_from_user(buf, (const char __user *)cmd.arg, sizeof(buf));
         if (len <= 0)
             return -EFAULT;
+        if (len == sizeof(buf))
+            return -ENAMETOOLONG;
 
         buf[sizeof(buf) - 1] = '\0';
 
@@ -760,9 +762,11 @@ static int manage_try_umount(void __user *arg)
 
     // this is just strcmp'd wipe anyway
     case KSU_UMOUNT_DEL: {
-        long len = strncpy_from_user(buf, (const char __user *)cmd.arg, sizeof(buf) - 1);
+        long len = strncpy_from_user(buf, (const char __user *)cmd.arg, sizeof(buf));
         if (len <= 0)
             return -EFAULT;
+        if (len == sizeof(buf))
+            return -ENAMETOOLONG;
 
         buf[sizeof(buf) - 1] = '\0';
 

@@ -3,6 +3,9 @@
 #include <linux/gfp.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
+#include <linux/string.h>
+#include <linux/ctype.h>
+#include <linux/spinlock.h>
 #include <linux/version.h>
 #include <linux/sched.h>
 #include <linux/pid.h>
@@ -33,16 +36,29 @@ static struct dynamic_manager_config dynamic_manager = {
     .is_set = 0
 };
 
+static DEFINE_SPINLOCK(dynamic_manager_lock);
+
 bool ksu_is_dynamic_manager_enabled(void)
 {
-    return dynamic_manager.is_set;
+    unsigned long flags;
+    bool enabled;
+
+    spin_lock_irqsave(&dynamic_manager_lock, flags);
+    enabled = dynamic_manager.is_set;
+    spin_unlock_irqrestore(&dynamic_manager_lock, flags);
+
+    return enabled;
 }
 
-apk_sign_key_t ksu_get_dynamic_manager_sign(void)
+bool ksu_dynamic_manager_sign_matches(unsigned size, const char *sha256)
 {
-    apk_sign_key_t sign_key = { .size = dynamic_manager.size, .sha256 = dynamic_manager.hash };
+    unsigned long flags;
+    bool matched;
 
-    return sign_key;
+    spin_lock_irqsave(&dynamic_manager_lock, flags);
+    matched = dynamic_manager.is_set && size == dynamic_manager.size && strcmp(dynamic_manager.hash, sha256) == 0;
+    spin_unlock_irqrestore(&dynamic_manager_lock, flags);
+    return matched;
 }
 
 int ksu_handle_dynamic_manager(struct ksu_dynamic_manager_cmd *cmd)
@@ -66,23 +82,27 @@ int ksu_handle_dynamic_manager(struct ksu_dynamic_manager_cmd *cmd)
         // Validate hash format
         for (i = 0; i < 64; i++) {
             char c = cmd->hash[i];
-            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) {
+            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
                 pr_err("invalid hash character at position %d: %c\n", i, c);
                 return -EINVAL;
             }
         }
 
-        if (dynamic_manager.is_set) {
+        spin_lock_irqsave(&dynamic_manager_lock, flags);
+
+        if (dynamic_manager.is_set)
             ksu_unregister_manager_by_signature_index(KSU_SIGNATURE_INDEX_DYNAMIC_MANAGER);
-        }
 
         dynamic_manager.size = cmd->size;
         // userspace always put an char[64] to our
         // we just use memcpy to copy memory, and flag [64] to \0 by ourselves
-        memcpy(dynamic_manager.hash, cmd->hash, 64);
+        for (i = 0; i < 64; i++)
+            dynamic_manager.hash[i] = tolower(cmd->hash[i]);
         dynamic_manager.hash[64] = '\0';
 
         dynamic_manager.is_set = 1;
+
+        spin_unlock_irqrestore(&dynamic_manager_lock, flags);
 
         if (cmd->operation == DYNAMIC_MANAGER_OP_SET_SYNCHRONOUS)
             track_throne(TRACK_THRONE_FORCE_SEARCH_MGR | TRACK_THRONE_FORCE_SYNCHRONOUS);
@@ -92,6 +112,7 @@ int ksu_handle_dynamic_manager(struct ksu_dynamic_manager_cmd *cmd)
         break;
 
     case DYNAMIC_MANAGER_OP_GET:
+        spin_lock_irqsave(&dynamic_manager_lock, flags);
         if (dynamic_manager.is_set) {
             cmd->size = dynamic_manager.size;
 
@@ -101,9 +122,12 @@ int ksu_handle_dynamic_manager(struct ksu_dynamic_manager_cmd *cmd)
         } else {
             ret = -ENODATA;
         }
+        spin_unlock_irqrestore(&dynamic_manager_lock, flags);
         break;
     case DYNAMIC_MANAGER_OP_WIPE:
+        spin_lock_irqsave(&dynamic_manager_lock, flags);
         dynamic_manager.is_set = 0;
+        spin_unlock_irqrestore(&dynamic_manager_lock, flags);
         ret = 0;
         ksu_unregister_manager_by_signature_index(KSU_SIGNATURE_INDEX_DYNAMIC_MANAGER);
         pr_info("dynamic manager kernel settings reseted");

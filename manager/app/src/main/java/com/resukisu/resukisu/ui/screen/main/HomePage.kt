@@ -779,7 +779,7 @@ private fun InfoCard(
         }
 
         item(
-            visible = !isSimpleMode && !isHideSusfsStatus && systemInfo.susfsEnabled && systemInfo.susfsVersion.isNotEmpty()
+            visible = !isSimpleMode && !isHideSusfsStatus && systemInfo.susfsEnabled
         ) {
             SettingsBaseWidget(
                 iconPlaceholder = false,

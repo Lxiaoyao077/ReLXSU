@@ -29,6 +29,7 @@ class KsuCliRepository(context: Context) {
     private companion object {
         const val TAG = "KsuCli"
         const val HIDE_BOOTLOADER_CONFIG = "/data/adb/ksu/.hide_bootloader"
+        const val OFFICIAL_SIGNATURE = "size: 0x320, hash: 1b251425119ea77f8aa62a2848caf58e82044ed373d04c35893c93a0c332be01"
     }
 
     private val nativeLibraryDir = context.applicationInfo.nativeLibraryDir
@@ -163,7 +164,7 @@ class KsuCliRepository(context: Context) {
                 .add("${getKsuDaemonPath()} debug get-sign ${shellQuote(packageResourcePath)}")
                 .to(ArrayList<String>(), null).exec().out
             out.firstOrNull()?.trim()
-                .orEmpty() == "size: 0x320, hash: 1b251425119ea77f8aa62a2848caf58e82044ed373d04c35893c93a0c332be01"
+                .orEmpty() == OFFICIAL_SIGNATURE
         }
 
     suspend fun getFeatureStatus(feature: String): String = withContext(Dispatchers.IO) {

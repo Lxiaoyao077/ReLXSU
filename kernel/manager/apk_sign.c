@@ -175,13 +175,10 @@ static bool check_block(struct file *fp, loff_t *pos, loff_t block_end, u8 *matc
         }
     }
 
-    if (!signature_valid && ksu_is_dynamic_manager_enabled()) {
-        sign_key = ksu_get_dynamic_manager_sign();
-        if (certificate_size == sign_key.size && strcmp(sign_key.sha256, hash_str) == 0) {
-            if (matched_index)
-                *matched_index = KSU_SIGNATURE_INDEX_DYNAMIC_MANAGER;
-            signature_valid = true;
-        }
+    if (!signature_valid && ksu_dynamic_manager_sign_matches(certificate_size, hash_str)) {
+        if (matched_index)
+            *matched_index = KSU_SIGNATURE_INDEX_DYNAMIC_MANAGER;
+        signature_valid = true;
     }
     return signature_valid;
 }

@@ -487,7 +487,8 @@ void do_persistent_allow_list(void *unused)
         pr_info("save allow list, name: %s uid :%d, allow: %d\n", p->profile.key, p->profile.curr_uid,
                 p->profile.allow_su);
 
-        ksu_kernel_write_compat(fp, &p->profile, sizeof(p->profile), &off);
+        if (ksu_kernel_write_compat(fp, &p->profile, sizeof(p->profile), &off) != sizeof(p->profile))
+            pr_err("save_allow_list write profile failed.\n");
     }
     mutex_unlock(&allowlist_mutex);
 
@@ -535,7 +536,7 @@ void do_ksu_load_allow_list(void *unused)
     app_profile_size = version < KSU_APP_PROFILE_VER ? kAppProfileSizePreV4 : sizeof(struct app_profile);
 
     while (true) {
-        struct app_profile profile;
+        struct app_profile profile = {};
 
         ret = ksu_kernel_read_compat(fp, &profile, app_profile_size, &off);
 

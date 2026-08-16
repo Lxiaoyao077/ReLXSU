@@ -117,7 +117,7 @@ class HomeViewModel(
                                 managerVersion = basicInfo.managerVersion,
                                 selinuxStatus = basicInfo.selinuxStatus,
                                 susfsEnabled = susfsInfo?.enabled ?: false,
-                                susfsVersionSupported = susfsInfo?.enabled ?: false,
+                                susfsVersionSupported = susfsInfo?.version?.isNotEmpty() ?: false,
                                 susfsVersion = susfsInfo?.version.orEmpty(),
                                 susfsFeatures = susfsInfo?.enabledFeatures.orEmpty(),
                                 superuserCount = superuserCount,

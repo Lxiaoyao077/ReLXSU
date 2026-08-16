@@ -76,16 +76,16 @@ void ksu_register_manager(u32 uid, u8 signature_index)
 
     list_add_tail_rcu(&node->list, &ksu_manager_appid_list);
 
-    spin_unlock(&ksu_manager_list_write_lock);
-
     if (ksu_last_manager_appid == KSU_INVALID_APPID)
         ksu_last_manager_appid = appid;
+
+    spin_unlock(&ksu_manager_list_write_lock);
     return;
 }
 
 void ksu_unregister_manager(u32 uid)
 {
-    struct ksu_manager_node *node, *pos, *tmp;
+    struct ksu_manager_node *pos, *tmp;
     bool mark_another_manager = false;
 
     if (!ksu_is_manager_uid(uid))
@@ -101,13 +101,23 @@ void ksu_unregister_manager(u32 uid)
     list_for_each_entry_safe (pos, tmp, &ksu_manager_appid_list, list) {
         if (pos->appid == appid) {
             list_del_rcu(&pos->list);
+
+            if (mark_another_manager) {
+                // the removed node was the last manager; fall back to the
+                // first surviving node if any
+                ksu_last_manager_appid =
+                    list_empty(&ksu_manager_appid_list) ?
+                        KSU_INVALID_APPID :
+                        list_first_entry(&ksu_manager_appid_list, struct ksu_manager_node, list)->appid;
+            }
+
             spin_unlock(&ksu_manager_list_write_lock);
             kfree_rcu(pos, rcu);
             return;
         }
 
         if (mark_another_manager) {
-            ksu_last_manager_appid = appid;
+            ksu_last_manager_appid = pos->appid;
             mark_another_manager = false;
         }
     }
@@ -121,31 +131,28 @@ void ksu_unregister_manager(u32 uid)
 
 void ksu_unregister_manager_by_signature_index(u8 signature_index)
 {
-    struct ksu_manager_node *node, *pos, *tmp;
-    bool mark_another_manager = false;
-    u16 last_each_alive_appid = KSU_INVALID_APPID;
+    struct ksu_manager_node *pos, *tmp;
 
     spin_lock(&ksu_manager_list_write_lock);
 
     list_for_each_entry_safe (pos, tmp, &ksu_manager_appid_list, list) {
         if (pos->signature_index == signature_index) {
+            list_del_rcu(&pos->list);
+
             if (pos->appid == ksu_last_manager_appid) {
-                mark_another_manager = true;
+                ksu_last_manager_appid =
+                    list_empty(&ksu_manager_appid_list) ?
+                        KSU_INVALID_APPID :
+                        list_first_entry(&ksu_manager_appid_list, struct ksu_manager_node, list)->appid;
             }
 
-            list_del_rcu(&pos->list);
             spin_unlock(&ksu_manager_list_write_lock);
             kfree_rcu(pos, rcu);
             return;
         }
-
-        last_each_alive_appid = pos->appid;
     }
 
     spin_unlock(&ksu_manager_list_write_lock);
-
-    if (mark_another_manager)
-        ksu_last_manager_appid = last_each_alive_appid;
     return;
 }
 

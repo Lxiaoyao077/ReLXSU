@@ -477,9 +477,15 @@ static bool add_xperm_rule(struct policydb *db, const char *s, const char *t, co
 
     if (range) {
         if (strchr(range, '-')) {
-            sscanf(range, "%hx-%hx", &low, &high);
+            if (sscanf(range, "%hx-%hx", &low, &high) != 2) {
+                pr_info("invalid ioctl range: %s\n", range);
+                return false;
+            }
         } else {
-            sscanf(range, "%hx", &low);
+            if (sscanf(range, "%hx", &low) != 1) {
+                pr_info("invalid ioctl range: %s\n", range);
+                return false;
+            }
             high = low;
         }
     } else {
@@ -707,6 +713,7 @@ static bool add_type(struct policydb *db, const char *type_name, bool attr)
     type = (struct type_datum *)kzalloc(sizeof(struct type_datum), GFP_KERNEL);
     if (!type) {
         pr_err("add_type: alloc type_datum failed.\n");
+        db->p_types.nprim = value - 1;
         return false;
     }
 
@@ -717,11 +724,16 @@ static bool add_type(struct policydb *db, const char *type_name, bool attr)
     char *key = kstrdup(type_name, GFP_KERNEL);
     if (!key) {
         pr_err("add_type: alloc key failed.\n");
+        kfree(type);
+        db->p_types.nprim = value - 1;
         return false;
     }
 
     if (symtab_insert(&db->p_types, key, type)) {
         pr_err("add_type: insert symtab failed.\n");
+        kfree(key);
+        kfree(type);
+        db->p_types.nprim = value - 1;
         return false;
     }
 
@@ -732,21 +744,7 @@ static bool add_type(struct policydb *db, const char *type_name, bool attr)
 
     if (!new_type_attr_map_array) {
         pr_err("add_type: alloc type_attr_map_array failed\n");
-        return false;
-    }
-
-    struct type_datum **new_type_val_to_struct = ksu_kvrealloc(
-        db->type_val_to_struct, sizeof(*db->type_val_to_struct) * value, sizeof(*db->type_val_to_struct) * (value - 1));
-
-    if (!new_type_val_to_struct) {
-        pr_err("add_type: alloc type_val_to_struct failed\n");
-        return false;
-    }
-
-    char **new_val_to_name_types =
-        ksu_kvrealloc(db->sym_val_to_name[SYM_TYPES], sizeof(char *) * value, sizeof(char *) * (value - 1));
-    if (!new_val_to_name_types) {
-        pr_err("add_type: alloc val_to_name failed\n");
+        db->p_types.nprim = value - 1;
         return false;
     }
 
@@ -754,8 +752,25 @@ static bool add_type(struct policydb *db, const char *type_name, bool attr)
     ebitmap_init(&db->type_attr_map_array[value - 1]);
     ebitmap_set_bit(&db->type_attr_map_array[value - 1], value - 1, 1);
 
+    struct type_datum **new_type_val_to_struct = ksu_kvrealloc(
+        db->type_val_to_struct, sizeof(*db->type_val_to_struct) * value, sizeof(*db->type_val_to_struct) * (value - 1));
+
+    if (!new_type_val_to_struct) {
+        pr_err("add_type: alloc type_val_to_struct failed\n");
+        db->p_types.nprim = value - 1;
+        return false;
+    }
+
     db->type_val_to_struct = new_type_val_to_struct;
     db->type_val_to_struct[value - 1] = type;
+
+    char **new_val_to_name_types =
+        ksu_kvrealloc(db->sym_val_to_name[SYM_TYPES], sizeof(char *) * value, sizeof(char *) * (value - 1));
+    if (!new_val_to_name_types) {
+        pr_err("add_type: alloc val_to_name failed\n");
+        db->p_types.nprim = value - 1;
+        return false;
+    }
 
     db->sym_val_to_name[SYM_TYPES] = new_val_to_name_types;
     db->sym_val_to_name[SYM_TYPES][value - 1] = key;

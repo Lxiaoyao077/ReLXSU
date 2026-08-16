@@ -22,6 +22,6 @@ struct manager_info {
 int ksu_handle_dynamic_manager(struct ksu_dynamic_manager_cmd *cmd);
 bool ksu_load_dynamic_manager(void);
 bool ksu_is_dynamic_manager_enabled(void);
-apk_sign_key_t ksu_get_dynamic_manager_sign(void);
+bool ksu_dynamic_manager_sign_matches(unsigned size, const char *sha256);
 
 #endif

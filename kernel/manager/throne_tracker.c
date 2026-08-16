@@ -108,11 +108,6 @@ FILLDIR_RETURN_TYPE my_actor(MY_ACTOR_CTX_ARG, const char *name, int namelen, lo
     pr_info("Testing path: %s/%.*s", my_ctx->parent_dir, namelen, name);
 #endif
 
-    if (!my_ctx) {
-        pr_err("Invalid context\n");
-        return FILLDIR_ACTOR_STOP;
-    }
-
     if (!strncmp(name, "..", namelen) || !strncmp(name, ".", namelen))
         return FILLDIR_ACTOR_CONTINUE; // Skip "." and ".."
 
@@ -268,7 +263,6 @@ void do_track_throne(void *data)
     struct list_head uid_list;
     struct uid_data *np, *n;
     struct file *fp;
-    char chr = 0;
     loff_t pos = 0;
     loff_t line_start = 0;
     char buf[KSU_MAX_PACKAGE_NAME];
@@ -281,6 +275,10 @@ void do_track_throne(void *data)
     mutex_lock(&app_list_lock);
     if (unlikely(!last_app_id_map)) {
         last_app_id_map = bitmap_zalloc(MAX_APP_ID, GFP_KERNEL);
+        if (unlikely(!last_app_id_map)) {
+            mutex_unlock(&app_list_lock);
+            return;
+        }
     }
     mutex_unlock(&app_list_lock);
 
@@ -312,25 +310,31 @@ void do_track_throne(void *data)
         }
     }
 
+    char scan[64];
+    const char *delim = " ";
     for (;;) {
         struct uid_data *data = NULL;
-        ssize_t count = ksu_kernel_read_compat(fp, &chr, sizeof(chr), &pos);
-        const char *delim = " ";
         char *package = NULL;
         char *tmp = NULL;
         char *uid = NULL;
+        char *nl;
+        loff_t next_line;
         u32 res;
+        ssize_t n = ksu_kernel_read_compat(fp, scan, sizeof(scan), &pos);
 
-        if (count != sizeof(chr))
+        if (n <= 0)
             break;
-        if (chr != '\n')
+        nl = memchr(scan, '\n', n);
+        if (!nl)
             continue;
 
-        count = ksu_kernel_read_compat(fp, buf, sizeof(buf) - 1, &line_start);
-        if (count <= 0) {
+        next_line = pos - n + (nl - scan) + 1;
+
+        n = ksu_kernel_read_compat(fp, buf, sizeof(buf) - 1, &line_start);
+        if (n <= 0) {
             break;
         }
-        buf[count] = '\0';
+        buf[n] = '\0';
 
         data = kzalloc(sizeof(struct uid_data), GFP_KERNEL);
         if (!data) {
@@ -345,13 +349,15 @@ void do_track_throne(void *data)
         if (!uid || !package) {
             pr_err("update_uid: package or uid is NULL!\n");
             kfree(data);
-            break;
+            line_start = pos = next_line;
+            continue;
         }
 
         if (kstrtou32(uid, 10, &res)) {
             pr_err("update_uid: uid parse err\n");
             kfree(data);
-            break;
+            line_start = pos = next_line;
+            continue;
         }
         data->uid = res;
         strncpy(data->package, package, KSU_MAX_PACKAGE_NAME);
@@ -363,7 +369,7 @@ void do_track_throne(void *data)
             set_bit(appid - FIRST_APPLICATION_UID, curr_app_id_map);
         }
         // reset line start
-        line_start = pos;
+        line_start = pos = next_line;
     }
 
     filp_close(fp, 0);
@@ -425,6 +431,8 @@ out:
 void track_throne(unsigned int flags)
 {
     struct track_throne_struct *tts = kzalloc(sizeof(struct track_throne_struct), GFP_KERNEL);
+    if (unlikely(!tts))
+        return;
     tts->flags = flags;
 
     if (flags & TRACK_THRONE_FORCE_SYNCHRONOUS) {
